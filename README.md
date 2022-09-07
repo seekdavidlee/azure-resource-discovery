@@ -12,21 +12,33 @@ Some may argue that these resource names will never change, and why not just sto
 This project seeks to eliminate the issue of dependency between the creation of Azure Environment and deployment of application code with the idea that we can self-discover Azure resources at runtime (without the need to update any configurations or even the need to store resource names as configurations). In our problem statement, when a resource is deleted and recreated with another name, you are not impacted because the tool is still using the static tag value. In other words, the goal of ARD for DevOps is simplify code deployment dependencies lookup. 
 
 ## High Level Implementation Idea
-The tool will return a list Azure resource names related to a customer workload or a solution and those resource names could be used by the pipeline/workflow code or scripts to configure deployment necessary to push the new application code out. As such, we need to associate related Azure resources by a unique Id that groups them together (let's call this ard-solution-id). We can associate meta-data with Azure resources by tags. Hence, ARD will push a tag with a key of ard-solution-id and a value to be determined by the customer like a DevOps engineer. Note that this concept of tagging resources isn't new and is used by AKS or Spring Cloud when resources are created there and tagged with specific key/values.
+The tool will return a list Azure resource names related to a customer workload or a solution and those resource names could be used by the pipeline/workflow code or scripts to configure deployment necessary to push the new application code out. As such, we need to associate related Azure resources by a unique Id that groups them together (let's call this ard-solution-id). In addition, we will also apply ard-resource-id which will uniquely identify a single resource. We can associate meta-data with Azure resources by tags. Hence, ARD will push a tag with a key of ard-solution-id and a value to be determined by the customer like a DevOps engineer. Note that this concept of tagging resources isn't new and is used by AKS or Spring Cloud when resources are created there and tagged with specific key/values.
 
-We also need to further return a resource name based on environment such as Dev, Stage and Prod. The same ard-solution-id could be there  but for identifying unique resources in different environments, we need this key of solution-environment and values of dev, stage or prod. 
+We also need to further return a resource name based on environment such as Dev, Stage and Prod. The same ard-solution-id could be there  but for identifying unique resources in different environments, we need this key of ard-environment and values of dev, stage or prod. 
 
-Another filter could be geography, where we have a resource unique to a region and we need another key of ard-solution-region-id assuming we have the same set of resources per region. This could be potentially optional filter field but available as part of ARD for DevOps.
+Another filter could be geography, where we have a resource unique to a region and we need another key of ard-region-id assuming we have the same set of resources per region. This could be potentially optional filter field but available as part of ARD for DevOps.
 
 Now that we have covered the basics, we need to further refine this idea so that it can work at scale. In a real customer scenario, there will be more than one dev team with shared Azure resources managed by another team such as a Platform team i.e. Azure Container Registry could be shared across multiple dev teams and required as a variable in their individual app specific deployment pipeline/workflow. This means our solution will need to support getting results from multiple ard-solution-id.
 
 ## How It Works
-During environment creation, we need to inject the tags we have mentioned based on configuration matching rules defined by the user with a config file that they shall provide and we can update their current ARM Template or bicep file with our custom tag key/values based on a match. During app code deployment, we will then be able to populate the pipeline or workflow with runtime generated variables that the user can just use that identifies the Azure resource. This is similar to: 
+During environment (resources) creation, we need to inject the tags we have mentioned. During app code deployment, we will then be able to populate the pipeline or workflow with runtime generated variables that the user can just use that identifies the Azure resource. This is similar to: 
 
 ```  az resource list --tag ard-solution-id=foobar ```
 
 This azure cli command will pull all azure resources with tag that matches. We can then use the output to populate as pipeline variables so the pipeline tasks downstream can use said variables aka the Azure resource name.
 
-We will create a custom Azure DevOps task (https://docs.microsoft.com/en-us/azure/devops/extend/develop/add-build-task?view=azure-devops) for Azure DevOps and a custom GitHub Action (https://docs.github.com/en/actions/creating-actions/about-custom-actions) for GitHub workflow. There will be 2 of each, one task/action executed during environment creation and one task/action during app code deployment.
+### Azure Policy & Blueprint
 
-To use our tool, the user will need to configure their pipeline or workflow with our tasks/actions. The user will also need to include a configuration file for tagging purposes by our tool.
+The best way to apply resource tagging would be via Azure Policy. In order to do this in an automated fashion, we would likely want to use Azure Blueprint which defines the Azure Policies. As such, we will provide a tool that will allow users to input the tagging conditions based on either resource group, and/or resource type, generate the policies and apply the blueprint that we generate. Note that currently, Blueprint is still in preview and subject to change, but Azure Policy is GA-ed.
+
+### Custom task/action
+
+The best way to populate the pipeline or workflow with variables we have looked up during code deployment is via a custom task or action. Hence, we will create a custom Azure DevOps task (https://docs.microsoft.com/en-us/azure/devops/extend/develop/add-build-task?view=azure-devops) for Azure DevOps and a custom GitHub Action (https://docs.github.com/en/actions/creating-actions/about-custom-actions) for GitHub workflow. 
+
+# Specifications
+
+## Tags
+* ard-resource-id
+* ard-solution-id
+* ard-environment
+* ard-region (optional)
