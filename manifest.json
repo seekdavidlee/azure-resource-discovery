@@ -1,5 +1,9 @@
 {
   "resource-group-location": "centralus",
+  "managed-identity": {
+    "resource-group-name": "test-platform",
+    "name": "platform-managed-identity"
+  },
   "unique-resources": [
     {
       "name": "test-shared-key-vault",
@@ -40,6 +44,7 @@
   ],
   "group-resources": [
     {
+      "name": "shared1-dev",
       "resource-group-names": [
         "test-shared-services-dev"
       ],
@@ -48,6 +53,7 @@
       "ard-region": "pri1"
     },
     {
+      "name": "shared1-prod",
       "resource-group-names": [
         "test-shared-services-prod"
       ],
@@ -56,6 +62,7 @@
       "ard-region": "pri1"
     },
     {
+      "name": "someapp1-dev",
       "resource-group-names": [
         "test-microservice1-dev",
         "test-microservice2-dev",
@@ -66,6 +73,7 @@
       "ard-region": "pri1"
     },
     {
+      "name": "someapp2-prod-pri",
       "resource-group-names": [
         "test-microservice1-prod-pri",
         "test-microservice2-prod-pri",
@@ -76,6 +84,7 @@
       "ard-region": "pri1"
     },
     {
+      "name": "someapp2-prod-dr",
       "resource-group-names": [
         "test-microservice1-prod-dr",
         "test-microservice2-prod-dr",

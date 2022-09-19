@@ -63,7 +63,32 @@ namespace AzureResourceDiscovery.Core
             {
                 foreach (var groupResource in Manifest.GroupResources)
                 {
-                    //groupResource.
+                    if (string.IsNullOrEmpty(groupResource.Name)) throw new ApplicationException("Name cannot be null.");
+                    if (groupResource.ResourceGroupNames == null) throw new ApplicationException("ResourceGroupNames cannot be null!");
+                    if (groupResource.SolutionId == null) throw new ApplicationException("Solution Id cannot be null!");
+                    if (groupResource.Environment == null) throw new ApplicationException("Environment cannot be null!");
+
+                    AzurePolicy azurePolicy = new();
+
+                    var dic = new Dictionary<string, string>();
+
+                    dic[Constants.ArdSolutionId] = groupResource.SolutionId;
+                    dic[Constants.ArdEnvironment] = groupResource.Environment;
+
+                    azurePolicy.ThenEffectModify.Details.AddOrReplaceTag(Constants.ArdSolutionId, groupResource.SolutionId);
+                    azurePolicy.ThenEffectModify.Details.AddOrReplaceTag(Constants.ArdEnvironment, groupResource.Environment);
+
+                    if (!string.IsNullOrEmpty(groupResource.Region))
+                    {
+                        dic[Constants.ArdRegion] = groupResource.Region;
+                        azurePolicy.ThenEffectModify.Details.AddOrReplaceTag(Constants.ArdRegion, groupResource.Region);
+                    }
+
+                    azurePolicy.If.AnyResource(dic);
+
+                    azurePolicy.ThenEffectModify.Details.RoleDefinationIds.Add(Constants.RoleDefinationIds.TagContributor);
+
+                    processAzurePolicyResult(new AzurePolicyResult(azurePolicy, groupResource.Name, "Enforce ard solution specific tags", $"Enforce ard solution specific tags for {groupResource.Name}", groupResource.ResourceGroupNames));
                 }
             }
 

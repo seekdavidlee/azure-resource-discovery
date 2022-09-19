@@ -1,0 +1,29 @@
+{
+  "resource-group-location": "centralus",
+  "managed-identity": {
+    "resource-group-name": "test-platform",
+    "name": "platform-managed-identity"
+  },
+  "unique-resources": [
+    {
+      "name": "test-shared-key-vault",
+      "ard-resource-id": "shared-key-vault",
+      "resource-group-names": [
+        "test-shared-services-dev",
+        "test-shared-services-prod"
+      ],
+      "resource-type": "Microsoft.KeyVault/vaults"
+    }
+  ],
+  "group-resources": [
+    {
+      "name": "shared1-dev",
+      "resource-group-names": [
+        "test-shared-services-dev"
+      ],
+      "ard-solution-id": "shared1",
+      "ard-environment": "dev",
+      "ard-region": "pri1"
+    }
+  ]
+}
