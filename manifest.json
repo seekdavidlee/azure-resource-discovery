@@ -1,0 +1,89 @@
+{
+  "resource-group-location": "centralus",
+  "unique-resources": [
+    {
+      "name": "test-shared-key-vault",
+      "ard-resource-id": "shared-key-vault",
+      "resource-group-names": [
+        "test-shared-services-dev",
+        "test-shared-services-prod"
+      ],
+      "resource-type": "Microsoft.KeyVault/vaults"
+    },
+    {
+      "name": "test-shared-container-registry",
+      "ard-resource-id": "shared-container-registry",
+      "resource-group-names": [
+        "test-shared-services-dev",
+        "test-shared-services-prod"
+      ],
+      "resource-type": "Microsoft.ContainerRegistry/registries"
+    },
+    {
+      "name": "test-vnet-pri",
+      "ard-resource-id": "vnet-pri",
+      "resource-group-names": [
+        "test-networking-dev-pri",
+        "test-networking-prod-pri"
+      ],
+      "resource-type": "Microsoft.Network/virtualNetworks"
+    },
+    {
+      "name": "test-vnet-dr",
+      "ard-resource-id": "vnet-dr",
+      "resource-group-names": [
+        "test-networking-dev-dr",
+        "test-networking-prod-dr"
+      ],
+      "resource-type": "Microsoft.Network/virtualNetworks"
+    }
+  ],
+  "group-resources": [
+    {
+      "resource-group-names": [
+        "test-shared-services-dev"
+      ],
+      "ard-solution-id": "shared1",
+      "ard-environment": "dev",
+      "ard-region": "pri1"
+    },
+    {
+      "resource-group-names": [
+        "test-shared-services-prod"
+      ],
+      "ard-solution-id": "shared1",
+      "ard-environment": "prod",
+      "ard-region": "pri1"
+    },
+    {
+      "resource-group-names": [
+        "test-microservice1-dev",
+        "test-microservice2-dev",
+        "test-microservice3-dev"
+      ],
+      "ard-solution-id": "someapp1",
+      "ard-environment": "dev",
+      "ard-region": "pri1"
+    },
+    {
+      "resource-group-names": [
+        "test-microservice1-prod-pri",
+        "test-microservice2-prod-pri",
+        "test-microservice3-prod-pri"
+      ],
+      "ard-solution-id": "someapp2",
+      "ard-environment": "prod",
+      "ard-region": "pri1"
+    },
+    {
+      "resource-group-names": [
+        "test-microservice1-prod-dr",
+        "test-microservice2-prod-dr",
+        "test-microservice3-prod-dr"
+      ],
+      "ard-solution-id": "someapp2",
+      "ard-environment": "prod",
+      "ard-region": "dr1"
+    }
+  ]
+}

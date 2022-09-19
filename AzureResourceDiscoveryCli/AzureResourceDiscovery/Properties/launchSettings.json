@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "AzureResourceDiscovery": {
+      "commandName": "Project",
+      "commandLineArgs": "-f ..\\..\\..\\..\\..\\manifest.json -o ..\\..\\..\\..\\..\\results.json -d ..\\..\\..\\..\\..\\"
+    }
+  }
+}

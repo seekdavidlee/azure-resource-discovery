@@ -16,7 +16,7 @@ The tool will return a list Azure resource names related to a customer workload 
 
 We also need to further return a resource name based on environment such as Dev, Stage and Prod. The same ard-solution-id could be there  but for identifying unique resources in different environments, we need this key of ard-environment and values of dev, stage or prod. 
 
-Another filter could be geography, where we have a resource unique to a region and we need another key of ard-region-id assuming we have the same set of resources per region. This could be potentially optional filter field but available as part of ARD for DevOps.
+Another filter could be geography (primary or DR), where we have a resource unique to a region and we need another key of ard-region-id for the purpose of identifying a primary or DR resource. This could be potentially optional filter field but available as part of ARD for DevOps.
 
 Now that we have covered the basics, we need to further refine this idea so that it can work at scale. In a real customer scenario, there will be more than one dev team with shared Azure resources managed by another team such as a Platform team i.e. Azure Container Registry could be shared across multiple dev teams and required as a variable in their individual app specific deployment pipeline/workflow. This means our solution will need to support getting results from multiple ard-solution-id.
 
@@ -27,9 +27,9 @@ During environment (resources) creation, we need to inject the tags we have ment
 
 This azure cli command will pull all azure resources with tag that matches. We can then use the output to populate as pipeline variables so the pipeline tasks downstream can use said variables aka the Azure resource name.
 
-### Azure Policy & Blueprint
+### Azure Policy
 
-The best way to apply resource tagging would be via Azure Policy. In order to do this in an automated fashion, we would likely want to use Azure Blueprint which defines the Azure Policies. As such, we will provide a tool that will allow users to input the tagging conditions based on either resource group, and/or resource type, generate the policies and apply the blueprint that we generate. Note that currently, Blueprint is still in preview and subject to change, but Azure Policy is GA-ed.
+The best way to apply resource tagging would be via Azure Policy. A CLI tool we create whill generate the appropriate Azure Policies for tagging conditions based on either resource group, and/or resource type, and apply the policies on a Subscription. 
 
 ### Custom task/action
 
