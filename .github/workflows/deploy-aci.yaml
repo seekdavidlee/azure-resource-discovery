@@ -1,6 +1,13 @@
-on:
+on:  
+  push:
+    paths-ignore:
+      - 'README.md'
   workflow_dispatch:
-
+    inputs:
+      environmentselector:
+        description: 'Environment selector'
+        required: false
+  
 jobs:
   setup:
     name: Choose Secrets Environment Job
@@ -21,7 +28,7 @@ jobs:
       build_env: ${{ steps.setup.outputs.build_env }}
 
   cd_deploy:
-    name: Deploy Azure Environment
+    name: Deploy App
     needs:
       - setup
     environment: ${{ needs.setup.outputs.build_env }}
@@ -35,12 +42,7 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           enable-AzPSSession: true
 
-      - name: Build azure environment
-        id: deploy
-        uses: azure/arm-deploy@v1
-        with:
-          deploymentName: 'deploy-${{ needs.setup.outputs.build_env }}-${{ github.run_number }}'
-          resourceGroupName: test-shared-services-${{ needs.setup.outputs.build_env }}
-          template: ./deployment/deploy.bicep
-          parameters: >
-              solutionName=${{ secrets.SOLUTION_NAME }}
+      - id: deployaci
+        name: Deploy ACI
+        run: |
+          .\Deployment\deployaci.ps1 -ResourceGroupName test-shared-services-${{ needs.setup.outputs.build_env }} -DeployEnvironment ${{ needs.setup.outputs.build_env }}

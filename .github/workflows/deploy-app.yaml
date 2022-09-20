@@ -1,12 +1,5 @@
 on:  
-  push:
-    paths-ignore:
-      - 'README.md'
   workflow_dispatch:
-    inputs:
-      environmentselector:
-        description: 'Environment selector'
-        required: false
   
 jobs:
   setup:
