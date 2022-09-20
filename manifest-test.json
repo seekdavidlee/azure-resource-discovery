@@ -24,6 +24,15 @@
       "ard-solution-id": "shared1",
       "ard-environment": "dev",
       "ard-region": "pri1"
+    },
+    {
+      "name": "shared1-prod",
+      "resource-group-names": [
+        "test-shared-services-prod"
+      ],
+      "ard-solution-id": "shared1",
+      "ard-environment": "prod",
+      "ard-region": "pri1"
     }
   ]
 }
