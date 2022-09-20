@@ -11,6 +11,7 @@ Push-Location .\AzureResourceDiscoveryCli\AzureResourceDiscovery
 
 $groups = az group list --query "[].{Name:name, Id:id}" | ConvertFrom-Json
 if ($LastExitCode -ne 0) {
+    Pop-Location
     throw "An error has occured. Unable to query for resource groups."
 }
 
@@ -28,6 +29,7 @@ if (!$exist) {
     Write-Host "Managed identity resource group $miResourceGroup does not exist. Creating it now..."
     az group create --name $miResourceGroup --location $customerManifest."resource-group-location" --tags ard-internal-solution-id=ard | ConvertFrom-Json
     if ($LastExitCode -ne 0) {
+        Pop-Location
         throw "An error has occured. Unable to create resource group $miResourceGroup."
     }
 }
@@ -37,12 +39,17 @@ else {
 
 $ids = az identity list -g $miResourceGroup | ConvertFrom-Json
 if ($LastExitCode -ne 0) {
+    Pop-Location
     throw "An error has occured. Unable to query for managed identity in resource group $miResourceGroup."
 }
 
 if ($ids.Length -eq 0 -or ($ids | Where-Object { $_.name -eq $miName }).Length -ne 1) {
     # Create managed identity in resource group
-    $mid = az identity create --name $miName --resource-group $miResourceGroup --tags ard-internal-solution-id=ard | ConvertFrom-Json    
+    $mid = az identity create --name $miName --resource-group $miResourceGroup --tags ard-internal-solution-id=ard | ConvertFrom-Json
+    if ($LastExitCode -ne 0) {
+        Pop-Location
+        throw "An error has occured. Unable to create managed identity."
+    } 
 }
 else {
     $mid = $ids[0]
@@ -58,6 +65,7 @@ $manifest = Get-Content $resultsFile | ConvertFrom-Json
 # Script requires these variables
 $subId = az account show --query id --output tsv
 if ($LastExitCode -ne 0) {
+    Pop-Location
     throw "An error has occured. Unable to get subscription Id."
 }
 $taggingRoleId = "/subscriptions/$subId/providers/Microsoft.Authorization/roleDefinitions/4a9ae827-6dc8-4573-8ac7-8239d42aa03f"
@@ -74,6 +82,7 @@ foreach ($item in $manifest.Items) {
 
     az policy definition create --name $name --display-name  $displayName --description $description --rules $filePath --mode All
     if ($LastExitCode -ne 0) {
+        Pop-Location
         throw "An error has occured. Unable to create policy defination $name."
     }
     $resourceGroupNames = $item.ResourceGroupNames
@@ -89,6 +98,7 @@ foreach ($item in $manifest.Items) {
             $newGroup = az group create --name $resourceGroupName --location $manifest.ResourceGroupLocation `
                 --tags ard-internal-solution-id=ard | ConvertFrom-Json
             if ($LastExitCode -ne 0) {
+                Pop-Location
                 throw "An error has occured. Unable to create resource group $resourceGroupName."
             }
             $groups += @{ Name = $newGroup.name; Id = $newGroup.id }
@@ -101,16 +111,17 @@ foreach ($item in $manifest.Items) {
         az role assignment create --assignee-object-id $mid.principalId --role $taggingRoleId `
             --resource-group $resourceGroupName --assignee-principal-type ServicePrincipal
         if ($LastExitCode -ne 0) {
+            Pop-Location
             throw "An error has occured. Unable to create managed identity in resource group $resourceGroupName."
         }
 
-        $policyId = "/subscriptions/$subId/providers/Microsoft.Authorization/policyDefinitions/$name"
-        $assignmentName = "$name"
+        $policyId = "/subscriptions/$subId/providers/Microsoft.Authorization/policyDefinitions/$name"        
         $scope = "/subscriptions/$subId/resourceGroups/$resourceGroupName"
-        az policy assignment create --name $assignmentName  --scope $scope --policy $policyId `
+        az policy assignment create --display-name "$displayName $resourceGroupName" --name $name --scope $scope --policy $policyId `
             --mi-user-assigned $mid.id --location $mid.location
             
         if ($LastExitCode -ne 0) {
+            Pop-Location
             throw "An error has occured. Unable to perform policy asssingment in scope of $resourceGroupName."
         }
     }

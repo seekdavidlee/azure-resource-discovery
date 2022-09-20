@@ -6,7 +6,8 @@ $location = "centralus"
 $devRg = "test-shared-services-dev"
 $name = "test" + (New-Guid).ToString("N").Substring(0, 7)
 
-# Notice the lack of ard specific tag in all resources created which is the main point of showing the policy remediation
+# Notice the lack of ard specific tag in all resources created which is the main point of showing the benefit of Azure policy
+# which will automatically apply the desired tags.
 az keyvault create --name "$name-dev" --resource-group $devRg --location $location  
 az keyvault create --name "$name-prod" --resource-group "test-shared-services-prod" --location $location
 
