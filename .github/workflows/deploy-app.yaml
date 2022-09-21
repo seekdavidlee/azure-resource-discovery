@@ -35,7 +35,12 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           enable-AzPSSession: true
 
+      - id: ardlookupacr
+        name: Lookup Azure Container Registry name with ARD
+        run: |
+          .\Deployment\ARDLookup.ps1 -ResourceId shared-container-registry -DeployEnvironment ${{ needs.setup.outputs.build_env }}
+
       - id: deployapp
         name: Deploy App
         run: |
-          .\Deployment\deployapp.ps1 -deployEnvironment ${{ needs.setup.outputs.build_env }}
+          .\Deployment\deployapp.ps1 -AcrName ${{ steps.ardlookupacr.outputs.resourceName }}
