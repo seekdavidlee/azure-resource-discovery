@@ -19,3 +19,5 @@ resource acrResource 'Microsoft.ContainerRegistry/registries@2021-06-01-preview'
     adminUserEnabled: true
   }
 }
+
+output acrName string = acrResource.name
