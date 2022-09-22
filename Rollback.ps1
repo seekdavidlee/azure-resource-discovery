@@ -1,6 +1,8 @@
 $ErrorActionPreference = "Stop"
-$names = az group list --tag ard-internal-solution-id=ard --query "[].name" | ConvertFrom-Json
 
+$internalSolutionId = "arddevtest"
+
+$names = az group list --tag ard-internal-solution-id=$internalSolutionId --query "[].name" | ConvertFrom-Json
 # Policy assignments are automatically removed when scope i.e. rg is removed.
 foreach ($name in $names) {
     Write-Host "Removing resource group $name"
@@ -10,7 +12,7 @@ foreach ($name in $names) {
     }
 }
 
-$policies = (az policy definition list --query "[].{Name:name, Id:id}" | ConvertFrom-Json) | Where-Object { $_.Name.StartsWith("ard-") }
+$policies = (az policy definition list --query "[].{Name:name, Id:id}" | ConvertFrom-Json) | Where-Object { $_.Name.StartsWith("arddevtest-") }
 $policies | ForEach-Object {
     $name = $_.Name
     Write-Host "Removing policy $name"

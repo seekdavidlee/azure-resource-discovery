@@ -1,5 +1,14 @@
-param([Parameter(Mandatory = $true)][string]$ManifestFilePath)
+# Dev Test is used when we are developing azure-resource-discovery and used to update the internal solution id.
+
+param([Parameter(Mandatory = $true)][string]$ManifestFilePath, [Switch]$DevTest)
 $ErrorActionPreference = "Stop"
+
+if ($DevTest) {
+    $internalSolutionId = "arddevtest"
+}
+else {
+    $internalSolutionId = "ard"
+}
 
 if (!(Test-Path $ManifestFilePath)) {
     throw "Invalid manifest file path $ManifestFilePath"
@@ -27,7 +36,7 @@ if (!$exist) {
 
     # if group does not exist, create it
     Write-Host "Managed identity resource group $miResourceGroup does not exist. Creating it now..."
-    az group create --name $miResourceGroup --location $customerManifest."resource-group-location" --tags ard-internal-solution-id=ard | ConvertFrom-Json
+    az group create --name $miResourceGroup --location $customerManifest."resource-group-location" --tags ard-internal-solution-id=$internalSolutionId | ConvertFrom-Json
     if ($LastExitCode -ne 0) {
         Pop-Location
         throw "An error has occured. Unable to create resource group $miResourceGroup."
@@ -45,7 +54,7 @@ if ($LastExitCode -ne 0) {
 
 if ($ids.Length -eq 0 -or ($ids | Where-Object { $_.name -eq $miName }).Length -ne 1) {
     # Create managed identity in resource group
-    $mid = az identity create --name $miName --resource-group $miResourceGroup --tags ard-internal-solution-id=ard | ConvertFrom-Json
+    $mid = az identity create --name $miName --resource-group $miResourceGroup --tags ard-internal-solution-id=$internalSolutionId | ConvertFrom-Json
     if ($LastExitCode -ne 0) {
         Pop-Location
         throw "An error has occured. Unable to create managed identity."
@@ -73,7 +82,7 @@ $taggingRoleId = "/subscriptions/$subId/providers/Microsoft.Authorization/roleDe
 
 foreach ($item in $manifest.Items) {
     
-    $name = "ard-" + $item.Name
+    $name = "$internalSolutionId-" + $item.Name
     $displayName = $item.DisplayName
     $description = $item.Description
     $filePath = $item.FilePath
@@ -96,7 +105,7 @@ foreach ($item in $manifest.Items) {
             # if group does not exist, create it
             Write-Host "Group $resourceGroupName does not exist. Creating it now..."
             $newGroup = az group create --name $resourceGroupName --location $manifest.ResourceGroupLocation `
-                --tags ard-internal-solution-id=ard | ConvertFrom-Json
+                --tags ard-internal-solution-id=$internalSolutionId | ConvertFrom-Json
             if ($LastExitCode -ne 0) {
                 Pop-Location
                 throw "An error has occured. Unable to create resource group $resourceGroupName."
