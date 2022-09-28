@@ -41,6 +41,13 @@ if (!$exist) {
         Pop-Location
         throw "An error has occured. Unable to create resource group $miResourceGroup."
     }
+
+    # lock the resource group
+    az lock create --name "$miResourceGroup-lock" --lock-type CanNotDelete --resource-group $miResourceGroup
+    if ($LastExitCode -ne 0) {
+        Pop-Location
+        throw "An error has occured. Unable to lock resource group $miResourceGroup."
+    }
 }
 else {
     Write-Host "Group $miResourceGroup exist"
@@ -111,6 +118,12 @@ foreach ($item in $manifest.Items) {
                 throw "An error has occured. Unable to create resource group $resourceGroupName."
             }
             $groups += @{ Name = $newGroup.name; Id = $newGroup.id }
+
+            az lock create --name "$resourceGroupName-lock" --lock-type CanNotDelete --resource-group $resourceGroupName
+            if ($LastExitCode -ne 0) {
+                Pop-Location
+                throw "An error has occured. Unable to lock resource group $resourceGroupName."
+            }
         }
         else {
             Write-Host "Group $resourceGroupName exist"

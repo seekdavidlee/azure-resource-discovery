@@ -5,6 +5,17 @@ $internalSolutionId = "arddevtest"
 $names = az group list --tag ard-internal-solution-id=$internalSolutionId --query "[].name" | ConvertFrom-Json
 # Policy assignments are automatically removed when scope i.e. rg is removed.
 foreach ($name in $names) {
+
+    Write-Host "Removing resource group $name lock"
+    $lockid = az lock show --name "$name-lock" --resource-group $name --output tsv --query id
+
+    if ($lockid){
+        az lock delete --ids $lockid
+        if ($LastExitCode -ne 0) {
+            throw "An error has occured. Unable to remove resource group lock."
+        }
+    }
+
     Write-Host "Removing resource group $name"
     az group delete --name $name --yes
     if ($LastExitCode -ne 0) {
