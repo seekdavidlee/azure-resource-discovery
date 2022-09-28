@@ -1,3 +1,10 @@
+# Usage
+To use this solution, create a manifest file and run the Apply command.
+
+```
+.\Apply.ps1 -ManifestFilePath <Path to>\manifest.json
+```
+
 # Problem Statement
 
 As part of a Continuous Deployment process, we will create an Azure environment by defining Azure resources in an ARM Template, Bicep or Terraform (aka Infra-as-code) and then deploy application code into specified Azure resources. To be exact, we would often need to pass the resource names created by the Infra-as-code and inject them as variables into the Azure Pipelines or GitHub Workflow as we are deploying our application code. This creates an unnecessary dependency for the pipeline/workflow related to creating the Azure environment and the pipeline/workflow for deployment of application code.

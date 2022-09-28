@@ -26,6 +26,8 @@ if ($LastExitCode -ne 0) {
 
 $customerManifest = Get-Content $ManifestFilePath | ConvertFrom-Json
 
+$rgTagging = $customerManifest."group-resources"
+
 # Policy assignment requires the use of a managed identity.
 $mi = $customerManifest."managed-identity"
 $miResourceGroup = $mi."resource-group-name"
@@ -109,10 +111,24 @@ foreach ($item in $manifest.Items) {
         $exist = $groups | Where-Object { $_.Name -eq $resourceGroupName }
         if (!$exist) {
 
+            $find = $rgTagging | Where-Object { $_."resource-group-names".Contains($resourceGroupName) }
+
             # if group does not exist, create it
             Write-Host "Group $resourceGroupName does not exist. Creating it now..."
-            $newGroup = az group create --name $resourceGroupName --location $manifest.ResourceGroupLocation `
-                --tags ard-internal-solution-id=$internalSolutionId | ConvertFrom-Json
+            if ($find) {
+
+                Write-Host "Ensuring tags exist for ard-*"
+
+                $ardSolutionId = $find."ard-solution-id"
+                $ardEnvironment = $find."ard-environment"
+                $newGroup = az group create --name $resourceGroupName --location $manifest.ResourceGroupLocation `
+                    --tags ard-internal-solution-id=$internalSolutionId ard-solution-id=$ardSolutionId ard-environment=$ardEnvironment | ConvertFrom-Json
+            }
+            else {
+                $newGroup = az group create --name $resourceGroupName --location $manifest.ResourceGroupLocation `
+                    --tags ard-internal-solution-id=$internalSolutionId  | ConvertFrom-Json
+            }
+
             if ($LastExitCode -ne 0) {
                 Pop-Location
                 throw "An error has occured. Unable to create resource group $resourceGroupName."
