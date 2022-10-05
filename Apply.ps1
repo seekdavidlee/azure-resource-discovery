@@ -143,6 +143,18 @@ foreach ($item in $manifest.Items) {
         }
         else {
             Write-Host "Group $resourceGroupName exist"
+
+            $find = $rgTagging | Where-Object { $_."resource-group-names".Contains($resourceGroupName) }
+            if ($find) {
+                
+                Write-Host "Ensuring tags exist for ard-*"
+                
+                $ardSolutionId = $find."ard-solution-id"
+                $ardEnvironment = $find."ard-environment"
+
+                az group update --name $resourceGroupName `
+                    --tags ard-internal-solution-id=$internalSolutionId ard-solution-id=$ardSolutionId ard-environment=$ardEnvironment 
+            }
         }
 
         # Perform role assignment
