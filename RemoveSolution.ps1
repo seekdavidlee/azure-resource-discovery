@@ -26,13 +26,30 @@ if ($devRes -and $devRes.Length -gt 0) {
         }
     }
 
+    $retryList = @()
+
     $devRes | ForEach-Object {
         if ($_.resourceGroup -eq $resourceGroupName) {
             $id = $_.id
             Write-Host "Removing $id"
             az resource delete --id $_.id
-            $count += 1
+            if ($LastExitCode -eq 0) {
+                $count += 1
+            }
+            else {
+                $retryList += $_.id
+            }
         }    
+    }
+
+    if ($retryList.Length -gt 0) {
+        foreach ($retryId in $retryList) {
+            Write-Host "Retry removing $retryId"
+            az resource delete --id $retryId
+            if ($LastExitCode -eq 0) {
+                $count += 1
+            }
+        }
     }
 
     if ($locks.Length -eq 1) {
