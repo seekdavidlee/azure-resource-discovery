@@ -1,24 +1,23 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace AzureResourceDiscovery.Core
+namespace AzureResourceDiscovery.Core;
+
+public class AzurePolicyThenEffectDetails
 {
-    public class AzurePolicyThenEffectDetails
+    public AzurePolicyThenEffectDetails()
     {
-        public AzurePolicyThenEffectDetails()
-        {
-            Operations = new();
-            RoleDefinationIds = new();
-        }
-
-        [JsonPropertyName("operations")]
-        public List<AzurePolicyThenEffectDetailsOperation> Operations { get; set; }
-
-        public void AddOrReplaceTag(string key, string value)
-        {
-            Operations.Add(new AzurePolicyThenEffectDetailsOperation("addOrReplace", $"tags['{key}']", value));
-        }
-
-        [JsonPropertyName("roleDefinitionIds")]
-        public List<string> RoleDefinationIds { get; set; }
+        Operations = new();
+        RoleDefinationIds = new();
     }
+
+    [JsonPropertyName("operations")]
+    public List<AzurePolicyThenEffectDetailsOperation> Operations { get; set; }
+
+    public void AddOrReplaceTag(string key, string value)
+    {
+        Operations.Add(new AzurePolicyThenEffectDetailsOperation("addOrReplace", $"tags['{key}']", value));
+    }
+
+    [JsonPropertyName("roleDefinitionIds")]
+    public List<string> RoleDefinationIds { get; set; }
 }

@@ -121,7 +121,12 @@ foreach ($item in $manifest.Items) {
 
                 $ardSolutionId = $find."ard-solution-id"
                 $ardEnvironment = $find."ard-environment"
-                $newGroup = az group create --name $resourceGroupName --location $manifest.ResourceGroupLocation `
+                $location = $find."resource-group-location"
+                if (!$location) {
+                    $location = $manifest.ResourceGroupLocation
+                }
+
+                $newGroup = az group create --name $resourceGroupName --location $location `
                     --tags ard-internal-solution-id=$internalSolutionId ard-solution-id=$ardSolutionId ard-environment=$ardEnvironment | ConvertFrom-Json
             }
             else {
