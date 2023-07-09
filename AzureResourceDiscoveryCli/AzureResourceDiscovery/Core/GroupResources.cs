@@ -18,4 +18,7 @@ public class GroupResources
 
     [JsonPropertyName(Constants.ArdRegion)]
     public string? Region { get; set; }
+
+    [JsonPropertyName("resource-group-location")]
+    public string? ResourceGroupLocation { get; set; }
 }

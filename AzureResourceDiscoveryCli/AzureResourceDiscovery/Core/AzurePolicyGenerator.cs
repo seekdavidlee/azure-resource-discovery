@@ -1,33 +1,49 @@
-﻿using System.Text.Json;
+﻿using Azure.Core;
+using Azure.Identity;
+using Azure.ResourceManager.Resources;
+using Azure.ResourceManager;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace AzureResourceDiscovery.Core;
 
-public class AzurePolicyResult
+public class AzurePolicyDefinition
 {
-    public AzurePolicyResult(AzurePolicy azurePolicy, string name, string displayName, string description, List<string> resourceGroupNames)
+    public AzurePolicyDefinition(AzurePolicy azurePolicy, string displayName, string description)
     {
-        AzurePolicy = azurePolicy;
-        Name = name;
+        PolicyRule = azurePolicy;
         DisplayName = displayName;
         Description = description;
-        ResourceGroupNames = resourceGroupNames;
     }
 
-    public AzurePolicy AzurePolicy { get; }
+    public AzurePolicy PolicyRule { get; }
 
-    public string Name { get; }
-
+    [JsonPropertyName("displayName")]
     public string DisplayName { get; }
 
+    [JsonPropertyName("description")]
     public string Description { get; }
-    public List<string> ResourceGroupNames { get; }
+
+    public override string ToString()
+    {
+        // See: https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-character-encoding
+        // Used to allow single quote, otherwise it will be converted.
+        JsonSerializerOptions options = new()
+        {
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            WriteIndented = true
+        };
+
+        return JsonSerializer.Serialize(this, options);
+    }
 }
 
 public class AzurePolicyGenerator
 {
     public Manifest? Manifest { get; private set; }
 
-    public bool GenerateFiles(string content, Action<AzurePolicyResult> processAzurePolicyResult)
+    public bool Apply(string content)
     {
         Manifest = JsonSerializer.Deserialize<Manifest>(content);
 
@@ -55,7 +71,7 @@ public class AzurePolicyGenerator
 
                 azurePolicy.ThenEffectModify.Details.RoleDefinationIds.Add(Constants.RoleDefinationIds.TagContributor);
 
-                processAzurePolicyResult(new AzurePolicyResult(azurePolicy, uniqueResource.Name, "Enforce ard-resource-id", $"Enforce ard-resource-id for {uniqueResource.Name}", uniqueResource.ResourceGroupNames));
+                ProcessAzureDefinition(new AzurePolicyDefinition(azurePolicy, $"Enforce ard-resource-id {uniqueResource.Name}", $"Enforce ard-resource-id for {uniqueResource.Name}"));
             }
         }
 
@@ -88,10 +104,41 @@ public class AzurePolicyGenerator
 
                 azurePolicy.ThenEffectModify.Details.RoleDefinationIds.Add(Constants.RoleDefinationIds.TagContributor);
 
-                processAzurePolicyResult(new AzurePolicyResult(azurePolicy, groupResource.Name, "Enforce ard solution specific tags", $"Enforce ard solution specific tags for {groupResource.Name}", groupResource.ResourceGroupNames));
+                ProcessAzureDefinition(new AzurePolicyDefinition(azurePolicy, $"Enforce ard solution specific tags for {groupResource.Name}", $"Enforce ard solution specific tags for {groupResource.Name}"));
             }
         }
 
         return true;
+    }
+
+    private static ArmClient? _client;
+    private static string? _subscriptionId;
+    private static SubscriptionPolicyDefinitionCollection? _subscriptionPolicyDefinitions;
+    private static void ProcessAzureDefinition(AzurePolicyDefinition azurePolicyDefinition)
+    {
+        if (_client is null)
+        {
+            _client = new ArmClient(new DefaultAzureCredential());
+            var sub = _client.GetDefaultSubscription();
+            if (sub.Id.SubscriptionId is not null)
+            {
+                _subscriptionId = sub.Id.SubscriptionId;
+            }
+
+            _subscriptionPolicyDefinitions = sub.GetSubscriptionPolicyDefinitions();
+        }
+
+        var found = _subscriptionPolicyDefinitions is not null && _subscriptionPolicyDefinitions.Any(x => x.Data.DisplayName == azurePolicyDefinition.DisplayName);
+
+        if (found)
+        {
+            Console.WriteLine($"{azurePolicyDefinition.DisplayName} exist.");
+            return;
+        }
+        ResourceIdentifier id = new ResourceIdentifier($"/subscriptions/{_subscriptionId}/providers/Microsoft.Authorization/policyDefinitions/{Guid.NewGuid()}");
+        var data = new GenericResourceData(AzureLocation.CentralUS);
+        data.Properties = new BinaryData(azurePolicyDefinition.ToString());
+        _client.GetGenericResources().CreateOrUpdate(Azure.WaitUntil.Completed, id, data);
+        Console.WriteLine($"Created {id}");
     }
 }

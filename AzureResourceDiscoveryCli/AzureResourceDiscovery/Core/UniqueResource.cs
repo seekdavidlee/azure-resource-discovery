@@ -16,6 +16,9 @@ public class UniqueResource
     [JsonPropertyName("resource-type")]
     public string? ResourceType { get; set; }
 
+    [JsonPropertyName("resource-group-location")]
+    public string? ResourceGroupLocation { get; set; }
+
     [JsonPropertyName("resource-group-names")]
     public List<string>? ResourceGroupNames { get; set; }
 }
