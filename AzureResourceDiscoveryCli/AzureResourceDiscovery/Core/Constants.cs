@@ -2,6 +2,8 @@
 
 public static class Constants
 {
+    public const string ArdInternalSolutionIdValue = "ard";
+    public const string ArdInternalSolutionId = "ard-internal-solution-id";
     public const string ArdSolutionId = "ard-solution-id";
     public const string ArdEnvironment = "ard-environment";
     public const string ArdRegion = "ard-region";

@@ -1,5 +1,6 @@
 ﻿using AzureResourceDiscovery.Core;
 using CommandLine;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AzureResourceDiscovery;
 
@@ -16,6 +17,8 @@ internal class Program
         bool hasErrors = false;
         Parser.Default.ParseArguments<Options>(args).WithParsed(o =>
         {
+            var services = new ServiceCollection();
+
             if (!string.IsNullOrEmpty(o.FilePath) && File.Exists(o.FilePath))
             {
                 var gen = new AzurePolicyGenerator();
