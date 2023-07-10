@@ -77,25 +77,8 @@ public class AzureClient : IAzureClient
     {
         foreach (var resourceGroupName in resourceGroupNames)
         {
-            CreateResourceGroupIfMissing(resourceGroupName, location, (rg) =>
-            {
-                bool createOrUpdate = false;
-                if (rg.Tags.TryGetValue(Constants.ArdInternalSolutionId, out string? val))
-                {
-                    if (val != Constants.ArdInternalSolutionIdValue)
-                    {
-                        rg.Tags[Constants.ArdInternalSolutionId] = Constants.ArdInternalSolutionIdValue;
-                        createOrUpdate = true;
-                    }
-                }
-                else
-                {
-                    rg.Tags.Add(Constants.ArdInternalSolutionId, Constants.ArdInternalSolutionIdValue);
-                    createOrUpdate = true;
-                }
-
-                return createOrUpdate;
-            });
+            CreateResourceGroupIfMissing(resourceGroupName, location, (rg) => rg.ApplyTagsIfMissingOrTagValueIfDifferent(
+                tags ?? new Dictionary<string, string>()));
         }
     }
 }
