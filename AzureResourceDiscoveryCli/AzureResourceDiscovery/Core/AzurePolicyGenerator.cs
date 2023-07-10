@@ -1,78 +1,33 @@
-﻿using Azure.Core;
-using Azure.Identity;
-using Azure.ResourceManager.Resources;
-using Azure.ResourceManager;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using Azure;
+﻿using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace AzureResourceDiscovery.Core;
 
-public class AzurePolicyDefinition
-{
-    public AzurePolicyDefinition(AzurePolicy azurePolicy, string displayName, string description)
-    {
-        PolicyRule = azurePolicy;
-        DisplayName = displayName;
-        Description = description;
-    }
-
-    public AzurePolicy PolicyRule { get; }
-
-    [JsonPropertyName("displayName")]
-    public string DisplayName { get; }
-
-    [JsonPropertyName("description")]
-    public string Description { get; }
-
-    public override string ToString()
-    {
-        // See: https://docs.microsoft.com/en-us/dotnet/standard/serialization/system-text-json-character-encoding
-        // Used to allow single quote, otherwise it will be converted.
-        JsonSerializerOptions options = new()
-        {
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-            WriteIndented = true
-        };
-
-        return JsonSerializer.Serialize(this, options);
-    }
-}
-
 public class AzurePolicyGenerator
 {
-    private readonly ResourceGroupCollection _resourceGroups;
-    private readonly ArmClient _client;
-    private readonly string _subscriptionId;
-    private readonly SubscriptionResource _subscriptionResource;
-    private readonly SubscriptionPolicyDefinitionCollection _subscriptionPolicyDefinitions;
+    private readonly IAzureClient azureClient;
+    private readonly ILogger<AzurePolicyGenerator> logger;
+    private Manifest? manifest;
 
-    public AzurePolicyGenerator()
+    public AzurePolicyGenerator(IAzureClient azureClient, ILogger<AzurePolicyGenerator> logger)
     {
-        _client = new ArmClient(new DefaultAzureCredential());
-        _subscriptionResource = _client.GetDefaultSubscription();
-        if (_subscriptionResource.Id.SubscriptionId is null)
-        {
-            throw new Exception("Unexpected for subscription Id to be null.");
-        }
-
-        _subscriptionId = _subscriptionResource.Id.SubscriptionId;
-        _subscriptionPolicyDefinitions = _subscriptionResource.GetSubscriptionPolicyDefinitions();
-        _resourceGroups = _subscriptionResource.GetResourceGroups();
+        this.azureClient = azureClient;
+        this.logger = logger;
     }
-
-    public Manifest? Manifest { get; private set; }
-
+   
     public bool Apply(string content)
     {
-        Manifest = JsonSerializer.Deserialize<Manifest>(content);
+        manifest = JsonSerializer.Deserialize<Manifest>(content);
 
-        if (Manifest == null) return false;
-
-        if (Manifest.UniqueResources != null)
+        if (manifest is null)
         {
-            foreach (var uniqueResource in Manifest.UniqueResources)
+            logger.LogError("Manifest cannot be deserialized.");
+            return false;
+        }
+
+        if (manifest.UniqueResources is not null)
+        {
+            foreach (var uniqueResource in manifest.UniqueResources)
             {
                 AzurePolicy azurePolicy = new();
 
@@ -92,15 +47,18 @@ public class AzurePolicyGenerator
 
                 azurePolicy.ThenEffectModify.Details.RoleDefinationIds.Add(Constants.RoleDefinationIds.TagContributor);
 
-                var result = ProcessAzureDefinition(new AzurePolicyDefinition(azurePolicy, $"Enforce ard-resource-id {uniqueResource.Name}", $"Enforce ard-resource-id for {uniqueResource.Name}"));
+                azureClient.ProcessAzureDefinition(new AzurePolicyDefinition(azurePolicy, $"Enforce ard-resource-id {uniqueResource.Name}", $"Enforce ard-resource-id for {uniqueResource.Name}"));
 
-
+                CreateResourceGroups(
+                   resourceGroupNames: uniqueResource.ResourceGroupNames,
+                   location: uniqueResource.ResourceGroupLocation,
+                   tags: null);
             }
         }
 
-        if (Manifest.GroupResources is not null)
+        if (manifest.GroupResources is not null)
         {
-            foreach (var groupResource in Manifest.GroupResources)
+            foreach (var groupResource in manifest.GroupResources)
             {
                 if (string.IsNullOrEmpty(groupResource.Name)) throw new ApplicationException("Name cannot be null.");
                 if (groupResource.ResourceGroupNames == null) throw new ApplicationException("ResourceGroupNames cannot be null!");
@@ -128,7 +86,7 @@ public class AzurePolicyGenerator
 
                 azurePolicy.ThenEffectModify.Details.RoleDefinationIds.Add(Constants.RoleDefinationIds.TagContributor);
 
-                ProcessAzureDefinition(new AzurePolicyDefinition(azurePolicy, $"Enforce ard solution specific tags for {groupResource.Name}", $"Enforce ard solution specific tags for {groupResource.Name}"));
+                azureClient.ProcessAzureDefinition(new AzurePolicyDefinition(azurePolicy, $"Enforce ard solution specific tags for {groupResource.Name}", $"Enforce ard solution specific tags for {groupResource.Name}"));
             }
         }
 
@@ -139,7 +97,7 @@ public class AzurePolicyGenerator
     {
         if (location is null)
         {
-            location = Manifest?.ResourceGroupLocation;
+            location = manifest?.ResourceGroupLocation;
         }
 
         if (location is null)
@@ -147,64 +105,9 @@ public class AzurePolicyGenerator
             throw new Exception("Unexpected that Resource Group location is null.");
         }
 
-        foreach (var resourceGroupName in resourceGroupNames)
-        {
-            CreateResourceGroupIfMissing(resourceGroupName, location, (rg) =>
-            {
-                bool createOrUpdate = false;
-                if (rg.Tags.TryGetValue(Constants.ArdInternalSolutionId, out string? val))
-                {
-                    if (val != Constants.ArdInternalSolutionIdValue)
-                    {
-                        rg.Tags[Constants.ArdInternalSolutionId] = Constants.ArdInternalSolutionIdValue;
-                        createOrUpdate = true;
-                    }
-                }
-                else
-                {
-                    rg.Tags.Add(Constants.ArdInternalSolutionId, Constants.ArdInternalSolutionIdValue);
-                    createOrUpdate = true;
-                }
-
-                return createOrUpdate;
-            });
-        }
-    }
-
-    private void CreateResourceGroupIfMissing(string resourceGroupName, string location, Func<ResourceGroupData, bool> taggingAction)
-    {
-        var group = _resourceGroups.SingleOrDefault(x => x.Id.ResourceGroupName == resourceGroupName);
-        if (group is null)
-        {
-            var resourceGroupData = new ResourceGroupData(location);
-            taggingAction(resourceGroupData);
-            _resourceGroups.CreateOrUpdate(WaitUntil.Completed, resourceGroupName, resourceGroupData);
-        }
-        else
-        {
-            if (taggingAction(group.Data))
-            {
-                _resourceGroups.CreateOrUpdate(WaitUntil.Completed, resourceGroupName, group.Data);
-            }
-        }
-    }
-
-
-    private ResourceIdentifier? ProcessAzureDefinition(AzurePolicyDefinition azurePolicyDefinition)
-    {
-        var found = _subscriptionPolicyDefinitions.SingleOrDefault(x => x.Data.DisplayName == azurePolicyDefinition.DisplayName);
-
-        if (found is not null)
-        {
-            Console.WriteLine($"{azurePolicyDefinition.DisplayName} exist.");
-            return found.Id;
-        }
-        ResourceIdentifier id = new ResourceIdentifier($"/subscriptions/{_subscriptionId}/providers/Microsoft.Authorization/policyDefinitions/{Guid.NewGuid()}");
-        var data = new GenericResourceData(AzureLocation.CentralUS);
-        data.Properties = new BinaryData(azurePolicyDefinition.ToString());
-        _client.GetGenericResources().CreateOrUpdate(Azure.WaitUntil.Completed, id, data);
-        Console.WriteLine($"Created {id}");
-
-        return id;
+        azureClient.CreateResourceGroups(
+            resourceGroupNames: resourceGroupNames,
+            location: location,
+            tags: tags);
     }
 }

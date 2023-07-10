@@ -1,56 +1,50 @@
 ﻿using AzureResourceDiscovery.Core;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace AzureResourceDiscovery;
 
-internal class Program
+public partial class Program
 {
-    public class Options
-    {
-        [Option('f', "filepath", Required = true, HelpText = "File path to manifest file")]
-        public string? FilePath { get; set; }
-    }
-
     static int Main(string[] args)
     {
-        bool hasErrors = false;
-        Parser.Default.ParseArguments<Options>(args).WithParsed(o =>
+        return Parser.Default.ParseArguments<Options>(args).MapResult(o =>
         {
             var services = new ServiceCollection();
-
-            if (!string.IsNullOrEmpty(o.FilePath) && File.Exists(o.FilePath))
+            services.AddSingleton(sp => o);
+            services.AddSingleton<AzurePolicyGenerator>();
+            services.AddSingleton<IAzureClient, AzureClient>();
+            services.AddLogging(cfg =>
             {
-                var gen = new AzurePolicyGenerator();
+                cfg.AddSimpleConsole(options =>
+                {
+                    options.IncludeScopes = true;
+                    options.SingleLine = true;
+                    options.TimestampFormat = "HH:mm:ss ";
+                });
+            });
 
-                try
-                {
-                    if (!gen.Apply(File.ReadAllText(o.FilePath)))
-                    {
-                        hasErrors = true;
-                        using TextWriter errorWriter = Console.Error;
-                        errorWriter.WriteLine("Unable to generate Azure Policy(ies)!");
-                    }
-                    else
-                    {
-                        if (gen.Manifest == null) throw new ApplicationException("Manifest cannot be null!");
-                    }
-                }
-                catch (Exception e)
-                {
-                    hasErrors = true;
-                    using TextWriter errorWriter = Console.Error;
-                    errorWriter.WriteLine(e.Message);
-                }
-            }
-            else
+            var serviceProvider = services.BuildServiceProvider();
+            var app = serviceProvider.GetService<App>();
+
+            if (app is null)
             {
-                hasErrors = true;
-                using TextWriter errorWriter = Console.Error;
-                errorWriter.WriteLine("Invalid file path!");
+                throw new Exception("App cannot be null. This is not expected.");
             }
+
+            app.Run();
+
+            return 0;
+        }, (ers) =>
+        {
+            using TextWriter errorWriter = Console.Error;
+            foreach (var er in ers)
+            {
+                errorWriter.WriteLine(er);
+            }
+
+            return -1;
         });
-
-        return hasErrors ? -1 : 0;
     }
 }
